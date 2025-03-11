@@ -1,4 +1,3 @@
-
 <template>
   <div class="container py-4">
     <h1 class="mb-3">Vue.js User Registration</h1>
@@ -8,33 +7,61 @@
       <!-- Name -->
       <div class="form-group mb-3">
         <label for="name">Name</label>
-        <input v-model="formData.name" type="text" class="form-control" id="name" placeholder="Enter name" required />
-        <small v-if="empties.name" class="text-warning">{{ empties.name }}</small>
-        <small v-else-if="errors.name" class="text-danger">{{ errors.name }}</small>
+        <input 
+          v-model="formData.name" 
+          type="text" 
+          class="form-control" 
+          :class="{ 'is-invalid': errors.name }"
+          id="name" 
+          placeholder="Enter name" 
+          required 
+        />
+        <div v-if="errors.name" class="invalid-feedback">{{ errors.name }}</div>
       </div>
 
       <!-- Email -->
       <div class="form-group mb-3">
         <label for="email">Email</label>
-        <input v-model="formData.email" type="email" class="form-control" id="email" placeholder="Enter email" required />
-        <small v-if="empties.email" class="text-warning">{{ empties.email }}</small>
-        <small v-else-if="errors.email" class="text-danger">{{ errors.email }}</small>
+        <input 
+          v-model="formData.email" 
+          type="email" 
+          class="form-control" 
+          :class="{ 'is-invalid': errors.email }"
+          id="email" 
+          placeholder="Enter email" 
+          required 
+        />
+        <div v-if="errors.email" class="invalid-feedback">{{ errors.email }}</div>
       </div>
 
       <!-- Password -->
       <div class="form-group mb-3">
         <label for="password">Password</label>
-        <input v-model="formData.password" type="password" class="form-control" id="password" placeholder="Enter password" required />
-        <small v-if="empties.password" class="text-warning">{{ empties.password }}</small>
-        <small v-else-if="errors.password" class="text-danger">{{ errors.password }}</small>
+        <input 
+          v-model="formData.password" 
+          type="password" 
+          class="form-control" 
+          :class="{ 'is-invalid': errors.password }"
+          id="password" 
+          placeholder="Enter password" 
+          required 
+        />
+        <div v-if="errors.password" class="invalid-feedback">{{ errors.password }}</div>
       </div>
 
       <!-- Age -->
       <div class="form-group mb-3">
         <label for="age">Age</label>
-        <input v-model.number="formData.age" type="number" class="form-control" id="age" placeholder="Enter age" required />
-        <small v-if="empties.age" class="text-warning">{{ empties.age }}</small>
-        <small v-else-if="errors.age" class="text-danger">{{ errors.age }}</small>
+        <input 
+          v-model.number="formData.age" 
+          type="number" 
+          class="form-control" 
+          :class="{ 'is-invalid': errors.age }"
+          id="age" 
+          placeholder="Enter age" 
+          required 
+        />
+        <div v-if="errors.age" class="invalid-feedback">{{ errors.age }}</div>
       </div>
 
       <button class="btn btn-primary" type="submit" :disabled="loading">
@@ -67,122 +94,112 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
-export default {
-  name: 'App',
-  data() {
-    return {
-      formData: {
+const formData = ref({
+  name: '',
+  email: '',
+  password: '',
+  age: ''
+})
+
+const errors = ref({})
+const submitted = ref(false)
+const users = ref([])
+const loadingUsers = ref(false)
+const loading = ref(false)
+const fadeOut = ref(false)
+
+const validateForm = () => {
+  errors.value = {}
+
+  if (!formData.value.name.trim()) {
+    errors.value.name = 'Name is required.'
+  } else if (formData.value.name.trim().length < 3) {
+    errors.value.name = 'Name must be at least 3 characters.'
+  }
+
+  if (!formData.value.email.trim()) {
+    errors.value.email = 'Email is required.'
+  } else {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailPattern.test(formData.value.email.trim())) {
+      errors.value.email = 'Please enter a valid email address.'
+    }
+  }
+
+  if (!formData.value.password.trim()) {
+    errors.value.password = 'Password is required.'
+  } else if (formData.value.password.trim().length < 6) {
+    errors.value.password = 'Password must be at least 6 characters.'
+  }
+
+  if (formData.value.age === '' || formData.value.age === null) {
+    errors.value.age = 'Age is required.'
+  } else if (isNaN(formData.value.age)) {
+    errors.value.age = 'Age must be a valid number.'
+  } else if (formData.value.age <= 18) {
+    errors.value.age = 'Age must be greater than 18.'
+  }
+
+  return Object.keys(errors.value).length === 0
+}
+
+const submitForm = () => {
+  submitted.value = false
+  fadeOut.value = true
+
+  if (!validateForm()) {
+    return
+  }
+
+  loading.value = true
+
+  axios.post('https://jsonplaceholder.typicode.com/users', { ...formData.value })
+    .then(response => {
+      console.log('POST response:', response.data)
+
+      submitted.value = true
+
+      formData.value = {
         name: '',
         email: '',
         password: '',
         age: ''
-      },
-
-      empties: {},
-      errors: {},
-      submitted: false,
-      users: [],
-      loadingUsers: false,
-      loading: false,
-      fadeOut: false
-    }
-  },
-  mounted() {
-    this.fetchUsers()
-  },
-  methods: {
-    validateForm() {
-      this.empties = {}
-      this.errors = {}
-
-      if (!this.formData.name || !this.formData.name.trim()) {
-        this.empties.name = 'Name is required.'
-      } else if (this.formData.name.trim().length < 3) {
-        this.errors.name = 'Name must be at least 3 characters.'
       }
 
-      if (!this.formData.email || !this.formData.email.trim()) {
-        this.empties.email = 'Email is required.'
-      } else {
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailPattern.test(this.formData.email.trim())) {
-          this.errors.email = 'Please enter a valid email address.'
-        }
-      }
-
-      if (!this.formData.password || !this.formData.password.trim()) {
-        this.empties.password = 'Password is required.'
-      } else if (this.formData.password.trim().length < 6) {
-        this.errors.password = 'Password must be at least 6 characters.'
-      }
-
-      if (this.formData.age === '' || this.formData.age === null) {
-        this.empties.age = 'Age is required.'
-      } else if (isNaN(this.formData.age)) {
-        this.errors.age = 'Age must be a valid number.'
-      } else if (this.formData.age <= 18) {
-        this.errors.age = 'Age must be greater than 18.'
-      }
-
-      return Object.keys(this.empties).length === 0 && Object.keys(this.errors).length === 0
-    },
-
-    submitForm() {
-      this.submitted = false
-      this.fadeOut = true;
-
-      if (!this.validateForm()) {
-        return
-      }
-
-      this.loading = true
-
-      axios.post('https://jsonplaceholder.typicode.com/users', { ...this.formData })
-        .then(response => {
-          console.log('POST response:', response.data)
-
-          this.submitted = true
-
-          this.formData = {
-            name: '',
-            email: '',
-            password: '',
-            age: ''
-          }
-
-          return this.fetchUsers()  // Fetch users after submission
-        })
-        .then(() => {
-          setTimeout(() => {
-            this.fadeOut = false;
-          }, 1000);
-        })
-        .catch(error => {
-          console.error('Error submitting user:', error)
-        })
-        .finally(() => {
-          this.loading = false;
-        })
-    },
-
-    fetchUsers() {
-      this.loadingUsers = true
-      return axios.get('https://jsonplaceholder.typicode.com/users')
-        .then(response => {
-          this.users = response.data
-        })
-        .catch(error => {
-          console.error('Error fetching users:', error)
-        })
-        .finally(() => {
-          this.loadingUsers = false
-        })
-    }
-  }
+      return fetchUsers() // Fetch users after submission
+    })
+    .then(() => {
+      setTimeout(() => {
+        fadeOut.value = false
+      }, 1000)
+    })
+    .catch(error => {
+      console.error('Error submitting user:', error)
+    })
+    .finally(() => {
+      loading.value = false
+    })
 }
+
+const fetchUsers = () => {
+  loadingUsers.value = true
+  return axios.get('https://jsonplaceholder.typicode.com/users')
+    .then(response => {
+      users.value = response.data
+    })
+    .catch(error => {
+      console.error('Error fetching users:', error)
+    })
+    .finally(() => {
+      loadingUsers.value = false
+    })
+}
+
+onMounted(fetchUsers)
 </script>
 
 <style scoped>
